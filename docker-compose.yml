@@ -3,7 +3,7 @@ version: '3.8'
 services: 
   backend:
     build: .
-    command: python -m http.server 800
+    command: python -m http.server 8000
     volumes:
       - ./development/backend:/app
     ports:
