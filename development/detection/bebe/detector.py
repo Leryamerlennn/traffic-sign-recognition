@@ -3,6 +3,8 @@ import numpy as np
 import os
 
 class SimpleTrafficSignDetector:
+
+    
     def __init__(self):
         # Define color ranges for traffic sign detection
         self.red_lower = np.array([100, 0, 0])    # Minimum red values
