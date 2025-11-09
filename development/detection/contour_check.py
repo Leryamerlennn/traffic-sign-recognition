@@ -1,159 +1,186 @@
 import cv2
 import numpy as np
-from typing import Dict, List, Tuple, Any
 
-def analyze_contours(contours_result: Dict[str, Any], 
-                    min_size: Tuple[int, int] = (20, 20),
-                    corner_margin: int = 50,
-                    min_overlap_distance: int = 30) -> Dict[str, Any]:
-    """
-    Анализирует контуры и возвращает валидные ROI
-    """
-    image = contours_result['original']
-    contours = contours_result.get('contours', [])
-    height, width = image.shape[:2]
+def analyze_contours(
+    contours,
+    image_shape,
+    min_size=(10, 10),
+    aspect_ratio_range=(0.5, 2.0),
+    roundness_threshold=0.3,
+    solidity_threshold=0.8,
+    corner_margin=10,
+    overlap_threshold=0.3
+):
     
-    valid_candidates = []
+
+
+    def ensure_contour_format(contour):
+        """Приводит контур к правильному формату для OpenCV."""
+        if contour is None:
+            return None
+            
+        # Преобразуем в numpy array если это не так
+        if not isinstance(contour, np.ndarray):
+            contour = np.array(contour, dtype=np.int32)
+        
+        # Проверяем и исправляем форму контура
+        if len(contour.shape) == 2 and contour.shape[1] == 2:
+            # Формат: (N, 2) -> преобразуем в (N, 1, 2)
+            contour = contour.reshape(-1, 1, 2)
+        elif len(contour.shape) == 1:
+            # Если это плоский массив, пытаемся восстановить структуру
+            if len(contour) % 2 == 0:
+                contour = contour.reshape(-1, 1, 2)
+            else:
+                return None
+        
+        return contour.astype(np.int32)
     
+
+
+
+
+    def calculate_shape_features(contour):
+        # Calculate parameters 
+        area = cv2.contourArea(contour)
+        perimeter = cv2.arcLength(contour, True)
+        
+        approx = cv2.approxPolyDP(contour,  0.02 * perimeter, True)
+        
+
+        roundness = (4 * np.pi * area) / (perimeter ** 2) if perimeter > 0 else 0
+        
+        hull = cv2.convexHull(contour)
+        hull_area = cv2.contourArea(hull)
+        solidity = area / hull_area if hull_area > 0 else 0
+        
+        return {
+            'area': area,
+            'perimeter': perimeter,
+            'vertices_count': len(approx),
+            'roundness': roundness,
+            'convexity': cv2.isContourConvex(contour),
+            'solidity': solidity,
+            'approx_contour': approx
+        }
+    
+    def calculate_overlap(rect1, rect2):
+
+        x1, y1, w1, h1 = rect1
+        x2, y2, w2, h2 = rect2
+        
+        dx = min(x1 + w1, x2 + w2) - max(x1, x2)
+        dy = min(y1 + h1, y2 + h2) - max(y1, y2)
+        
+        if dx <= 0 or dy <= 0:
+            return 0.0
+        
+        intersection_area = dx * dy
+        area1 = w1 * h1
+        area2 = w2 * h2
+        
+        
+        return intersection_area / min(area1, area2)
+
+    if contours is None or len(contours) == 0:
+        return []
+    
+    # main logic    
+    valid_contours = []  #
+    contours_data = []
+    img_height, img_width = image_shape
+    min_width, min_height = min_size
+    min_ar, max_ar = aspect_ratio_range
+    
+    # calculate params for every contour 
     for i, contour in enumerate(contours):
-        # Анализ формы и геометрии
-        shape_info = analyze_shape(contour)
-        context_info = analyze_context(contour, width, height, corner_margin)
-        
-        # Проверка всех критериев
-        if all([shape_info['shape_valid'],  context_info['context_valid']]):
-            candidate = {
-                'contour_id': i,
-                'contour': contour,
-                **shape_info,
-                **context_info
-            }
-            valid_candidates.append(candidate)
-    
-    # Удаляем перекрывающиеся ROI
-    valid_candidates = remove_wrong_roi(valid_candidates, min_overlap_distance)
-    
-    # Извлекаем ROI
-    valid_rois = extract_rois(image, valid_candidates)
-    
-    return {
-        'original_image': image,
-        'valid_candidates': valid_candidates,
-        'valid_rois': valid_rois,
-        'total_contours': len(contours),
-        'valid_contours': len(valid_candidates)
-    }
 
-def analyze_shape(contour: np.ndarray) -> Dict[str, Any]:
-
-    area = cv2.contourArea(contour)
-    perimeter = cv2.arcLength(contour, True)
-    
-    # Approximation  
-    epsilon = 0.02 * perimeter
-    approx = cv2.approxPolyDP(contour, epsilon, True)
-    vertices = len(approx)
-    
-    # Roundary
-    circularity = (4 * np.pi * area) / (perimeter * perimeter) if perimeter > 0 else 0
-    
-    # Solidity
-    hull = cv2.convexHull(contour)
-    hull_area = cv2.contourArea(hull)
-    solidity = area / hull_area if hull_area > 0 else 0
-    
-
-    shape_valid = (
-        vertices in [3, 4] or vertices >= 6 and  # vertices
-        0.2 <= circularity <= 1.0 and            #   roundary
-        solidity >= 0.7                          # Solidity
-    )
-    
-    return {
-        'area': area,
-        'vertices': vertices,
-        'circularity': circularity,
-        'solidity': solidity,
-        'shape_valid': shape_valid
-    }
-
-
-def analyze_context(contour: np.ndarray, img_w: int, img_h: int, margin: int) -> Dict[str, Any]:
-    
-    x, y, w, h = cv2.boundingRect(contour)
-    center_x, center_y = x + w//2, y + h//2
-    
-    
-    in_corner = any([
-        center_x < margin and center_y < margin,                       # left up
-        center_x > img_w - margin and center_y < margin,              # right up 
-        center_x < margin and center_y > img_h - margin,              # left down
-        center_x > img_w - margin and center_y > img_h - margin       # right down
-    ])
-    
-    return {
-        'center': (center_x, center_y),
-        'context_valid': not in_corner
-    }
-
-def remove_wrong_roi(candidates: List[Dict], min_distance: int) -> List[Dict]:
-    
-    if len(candidates) <= 1:
-        return candidates
-    
-    # Sort
-    candidates.sort(key=lambda x: x['area'], reverse=True)
-    filtered = []
-    
-    for candidate in candidates:
-        x1, y1, w1, h1 = candidate['bounding_rect']
-        center1 = np.array([x1 + w1/2, y1 + h1/2])
-        
-        too_close = any(
-            np.linalg.norm(center1 - np.array([x2 + w2/2, y2 + h2/2])) < min_distance
-            for x2, y2, w2, h2 in [c['bounding_rect'] for c in filtered]
-        )
-        
-        if not too_close:
-            filtered.append(candidate)
-    
-    return filtered
-
-def extract_rois(image: np.ndarray, candidates: List[Dict]) -> List[Dict]:
-
-    rois = []
-    
-    for candidate in candidates:
-        x, y, w, h = candidate['bounding_rect']
-        
-        # Image shape
-        if x < 0 or y < 0 or x + w > image.shape[1] or y + h > image.shape[0]:
+        formatted_contour = ensure_contour_format(contour)
+        if formatted_contour is None:
             continue
             
-        roi_image = image[y:y+h, x:x+w].copy()
+    
+        shape_features = calculate_shape_features(formatted_contour)
+        if shape_features is None:
+            continue
+            
+        # bounding box
+        try:
+            x, y, w, h = cv2.boundingRect(formatted_contour)
+            aspect_ratio = w / h if h > 0 else 0
+            
+            geometry_features = {
+                'bounding_rect': (x, y, w, h),
+                'aspect_ratio': aspect_ratio,
+                'meets_size_requirements': w >= min_width and h >= min_height,
+                'width': w,
+                'height': h,
+                'center': (x + w // 2, y + h // 2)
+            }
+            
+            contours_data.append({
+                'contour': formatted_contour, 
+                'shape': shape_features,
+                'geometry': geometry_features,
+                'index': i
+            })
+        except Exception as e:
+            print(f"error with countor {i}: {e}")
+            continue
+    
+    if not contours_data:
+        return []
+    
+    # Второй проход: анализ контекста
+    for i, contour_data in enumerate(contours_data):
+        rect = contour_data['geometry']['bounding_rect']
+        x, y, w, h = rect
         
-        rois.append({
-            'contour_id': candidate['contour_id'],
-            'roi_image': roi_image,
-            'bounding_rect': (x, y, w, h)
-        })
-    
-    return rois
-
-def visualize_analysis(image: np.ndarray, analysis: Dict[str, Any]) -> np.ndarray:
-    """Визуализация результатов"""
-    vis_image = image.copy()
-    
-    for candidate in analysis['valid_candidates']:
-        contour = candidate['contour']
-        x, y, w, h = candidate['bounding_rect']
+        in_corner = (
+            x < corner_margin or 
+            y < corner_margin or 
+            x + w > img_width - corner_margin or 
+            y + h > img_height - corner_margin
+        )
         
-        # Рисуем контур и bounding box
-        cv2.drawContours(vis_image, [contour], -1, (0, 255, 0), 2)
-        cv2.rectangle(vis_image, (x, y), (x+w, y+h), (255, 0, 0), 2)
-        cv2.putText(vis_image, f"ID:{candidate['contour_id']}", 
-                   (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+        max_overlap = 0.0
+        has_significant_overlap = False
+        
+        for j, other_data in enumerate(contours_data):
+            if i == j:
+                continue
+                
+            overlap = calculate_overlap(rect, other_data['geometry']['bounding_rect'])
+            max_overlap = max(max_overlap, overlap)
+            
+            if overlap > overlap_threshold:
+                has_significant_overlap = True
+                break
+        
+        contour_data['context'] = {
+            'in_corner': in_corner,
+            'has_significant_overlap': has_significant_overlap,
+            'overlap_score': max_overlap
+        }
     
-    return vis_image
-
-
+    # Фильтрация и сбор валидных контуров
+    for contour_data in contours_data:
+        shape = contour_data['shape']
+        geometry = contour_data['geometry']
+        context = contour_data['context']
+        
+        if (shape['area'] > 0 and
+            shape['roundness'] >= roundness_threshold and
+            shape['solidity'] >= solidity_threshold and
+            geometry['meets_size_requirements'] and
+            not context['in_corner'] and
+            not context['has_significant_overlap'] and
+            min_ar <= geometry['aspect_ratio'] <= max_ar):
+            
+            valid_contours.append(contour_data['contour'])
+    
+    
+    if valid_contours:
+        valid_contours.sort(key=lambda c: cv2.contourArea(c), reverse=True)
+    
+    return valid_contours

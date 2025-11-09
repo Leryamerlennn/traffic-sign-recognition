@@ -43,24 +43,24 @@ def apply_clahe(frame, clip_limit=2.0, grid_size=(8, 8)):
     return result
 
 
-def correct_illumination(image, alpha=1.0, beta=0):
+def correct_illumination(frame, alpha=1.0, beta=0):
     """Коррекция освещения через гамма-коррекцию и выравнивание яркости"""
-    # BGR -> YUV
-    yuv = cv2.cvtColor(image, cv2.COLOR_BGR2YUV)
-    y, u, v = cv2.split(yuv)
+    # BGR -> GRAY
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+    otsu_threshold, image_result = cv2.threshold(
+        gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU,
+    )
+
+    gamma = max(0.5, 1.0 - (otsu_threshold - 100) / 255.0)
+    inv_gamma = 1.0 / gamma
+
+    table = np.array([((i / 255.0) ** inv_gamma) * 255 for i in np.arange(0, 256)]).astype("uint8")
     
-    # gamma correction
-    gamma = 1.2  
-    y_corrected = np.power(y / 255.0, gamma) * 255
-    y_corrected = np.clip(y_corrected, 0, 255).astype(np.uint8)
+    # Применяем коррекцию
+    return cv2.LUT(frame, table)
     
-    
-    yuv_corrected = cv2.merge([y_corrected, u, v])
-    
-    # YUV -> BGR
-    result = cv2.cvtColor(yuv_corrected, cv2.COLOR_YUV2BGR)
-    
-    return result
+    return 
 
 
 

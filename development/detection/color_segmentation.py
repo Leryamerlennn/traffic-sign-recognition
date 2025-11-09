@@ -74,18 +74,17 @@ def process_all_contours(masks_dict, contour_params, min_area=600, max_area=6000
         )
         
         for contour in contours:
-            # Вычисляем характеристики контура
+            # Calculate area
             area = cv2.contourArea(contour)
             
-            # Пропускаем контуры с нулевой площадью
+            # ignore 0 area
             if area == 0:
                 continue
                 
-            # Ограничивающий прямоугольник
             x, y, w, h = cv2.boundingRect(contour)
             aspect_ratio = max(w, h) / min(w, h) if min(w, h) > 0 else float('inf')
             
-            # Фильтрация по параметрам
+            # filtration too small or too big 
             if (area < min_area or 
                 area > max_area or 
                 aspect_ratio > max_aspect_ratio):

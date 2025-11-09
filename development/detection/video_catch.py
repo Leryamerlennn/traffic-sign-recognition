@@ -4,22 +4,22 @@ import numpy as np
 from datetime import datetime
 from preprocess import preprocessing
 from color_segmentation import process_image
-from contour_check import analyze_contours, visualize_analysis
+from contour_check import analyze_contours
 
 def camera_work():
 #=============================
 
-    # Создаем папку для сохранения результатов
-    output_dir = "camera_analysis_results"
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-        print(f"Created directory: {output_dir}")
+    # # Создаем папку для сохранения результатов
+    # output_dir = "camera_analysis_results"
+    # if not os.path.exists(output_dir):
+    #     os.makedirs(output_dir)
+    #     print(f"Created directory: {output_dir}")
     
-    # Создаем подпапку с временной меткой для текущей сессии
-    session_time = datetime.now().strftime("%Y%m%d_%H%M%S")
-    session_dir = os.path.join(output_dir, f"session_{session_time}")
-    os.makedirs(session_dir)
-    print(f"Session directory: {session_dir}")
+    # # Создаем подпапку с временной меткой для текущей сессии
+    # session_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+    # session_dir = os.path.join(output_dir, f"session_{session_time}")
+    # os.makedirs(session_dir)
+    # print(f"Session directory: {session_dir}")
 
 
 #=============================
@@ -51,23 +51,34 @@ def camera_work():
 
 
         
-
+        #======================================================================================
         #вызов функций 
-        blck = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        result = preprocessing(frame)
-        result1 = process_image(result)
+        
+        preproc = preprocessing(frame)
+        result1 = process_image(preproc)
+
+
         
         # Анализируем контуры
-        analysis_result = analyze_contours(process_image(result))
+        analysis_result = analyze_contours(result1['contours_result'], (640, 640))
 
-        cv2.imshow('Webcam', frame)
-        #Если захочу проверить 
+        cv2.imshow('input', preproc)
 
-        contours_result = result1['red_mask']
-        cv2.imshow('Webcam', contours_result)
+        copy_preproc = preproc.copy()
+
+
+
+        cv2.drawContours(
+            image=copy_preproc, 
+            contours=analysis_result,
+            contourIdx=-1, 
+            color=(0,255,0),
+            thickness=2
+        )
+        cv2.imshow("contours", copy_preproc)
 
         # ВИЗУАЛИЗАЦИЯ В РЕАЛЬНОМ ВРЕМЕНИ
-        visualize_contour_analysis(frame, analysis_result)
+        #visualize_contour_analysis(frame, analysis_result)
 
 
 
