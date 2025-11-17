@@ -44,7 +44,7 @@ def apply_clahe(frame, clip_limit=2.0, grid_size=(8, 8)):
 
 
 def correct_illumination(frame, alpha=1.0, beta=0):
-    """Коррекция освещения через гамма-коррекцию и выравнивание яркости"""
+    """Otsu illumination correction"""
     # BGR -> GRAY
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
@@ -57,10 +57,8 @@ def correct_illumination(frame, alpha=1.0, beta=0):
 
     table = np.array([((i / 255.0) ** inv_gamma) * 255 for i in np.arange(0, 256)]).astype("uint8")
     
-    # Применяем коррекцию
+    # aply
     return cv2.LUT(frame, table)
-    
-    return 
 
 
 
@@ -78,24 +76,3 @@ def preprocessing(frame):
     final_image = correct_illumination(blurred)
     
     return final_image
-
-
-# # Пример использования
-# if __name__ == "__main__":
-#     # Загрузка изображения
-#     frame = cv2.imread("/Users/anastasia/Learning/traffic-sign-recognition/data/example/tipy-dorozhnyh-znakov-00-min.jpg")
-    
-#     if frame is not None:
-#         # Применение алгоритма предобработки
-#         processed_image = preprocessing(frame)
-        
-#         # Сохранение результата
-#         #cv2.imwrite("processed_image.jpg", processed_image)
-        
-#         # Показать оригинал и результат
-#         cv2.imshow("Original", frame)
-#         cv2.imshow("Processed", processed_image)
-#         cv2.waitKey(0)
-#         cv2.destroyAllWindows()
-#     else:
-#         print("Ошибка: Не удалось загрузить изображение")
