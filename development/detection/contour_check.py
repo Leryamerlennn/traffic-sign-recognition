@@ -11,8 +11,6 @@ def analyze_contours(
     corner_margin=10,
     overlap_threshold=0.3
 ):
-    
-
 
     def ensure_contour_format(contour):
         """Приводит контур к правильному формату для OpenCV."""

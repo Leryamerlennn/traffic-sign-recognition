@@ -100,7 +100,7 @@ def process_all_contours(masks_dict, contour_params, min_area=600, max_area=6000
     return all_contours
 
 # =========== MAIN process function ============
-def process_image(image):
+def find_contours(image):
     # BGR -> HSV
     hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
     
