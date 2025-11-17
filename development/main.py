@@ -4,7 +4,9 @@ import os
 import sys
 from pathlib import Path
 from keras.models import load_model
-from detection.detector import SimpleTrafficSignDetector
+from detection.preprocess import preprocessing
+from detection.color_segmentation import find_contours
+from detection.contour_check import analyze_contours
 
 # Define traffic sign classes based
 TRAFFIC_SIGN_CLASSES = {
@@ -59,8 +61,6 @@ class TrafficSignRecognitionSystem:
     
     def __init__(self, model_path=None):
         """Initialize the system with detector and classifier"""
-        # Initialize detector
-        self.detector = SimpleTrafficSignDetector()
         
         # Load classification model
         if model_path is None:
@@ -117,17 +117,15 @@ class TrafficSignRecognitionSystem:
             return None, []
         
         # Detect objects
-        color_mask = self.detector.create_color_mask(frame)
-        contours = self.detector.find_contours(color_mask)
-        shapes = self.detector.detect_shapes(contours)
+        preproc = preprocessing(frame)
+        result1 = find_contours(preproc)
+        valid_contours = analyze_contours(result1['contours_result'], (640, 640))
         
         # Process detections
         detections = []
         result_frame = frame.copy()
-        
-        for shape_info in shapes:
-            contour = shape_info['contour']
-            
+
+        for contour in valid_contours:
             # Get bounding box
             x, y, width, height = cv2.boundingRect(contour)
             
@@ -144,7 +142,6 @@ class TrafficSignRecognitionSystem:
                 'bbox': (x, y, width, height),
                 'class': class_name,
                 'confidence': confidence,
-                'shape': shape_info['shape'],
                 'contour': contour
             }
             detections.append(detection_info)
