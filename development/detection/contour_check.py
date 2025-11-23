@@ -33,10 +33,26 @@ def analyze_contours(
                 return None
         
         return contour.astype(np.int32)
+
+    def check_shape(contour):
+        if contour is None or len(contour) < 3:
+            return False
+        
+        # Аппроксимация Дугласа-Пекера
+        perimeter = cv2.arcLength(contour, True)
+        approx = cv2.approxPolyDP(contour, 0.02 * perimeter, True)
+        n = len(approx)
+        
     
-
-
-
+        if n in [3, 4]:
+            return True
+        
+        if n > 8 and cv2.isContourConvex(approx):
+            sides = [np.linalg.norm(approx[(i+1)%n][0] - approx[i][0]) for i in range(n)]
+            avg_side = np.mean(sides)
+            return all(abs(side - avg_side) < 0.3 * avg_side for side in sides)
+        
+        return False
 
     def calculate_shape_features(contour):
         # Calculate parameters 
@@ -45,8 +61,9 @@ def analyze_contours(
         
         approx = cv2.approxPolyDP(contour,  0.02 * perimeter, True)
         
-
         roundness = (4 * np.pi * area) / (perimeter ** 2) if perimeter > 0 else 0
+
+        type_of_shape = check_shape(contour) 
         
         hull = cv2.convexHull(contour)
         hull_area = cv2.contourArea(hull)
@@ -59,7 +76,8 @@ def analyze_contours(
             'roundness': roundness,
             'convexity': cv2.isContourConvex(contour),
             'solidity': solidity,
-            'approx_contour': approx
+            'approx_contour': approx,
+            #'type_of_shape': type_of_shape
         }
     
     def calculate_overlap(rect1, rect2):
@@ -174,6 +192,7 @@ def analyze_contours(
             not context['in_corner'] and
             not context['has_significant_overlap'] and
             min_ar <= geometry['aspect_ratio'] <= max_ar):
+            #shape['type_of_shape']):
             
             valid_contours.append(contour_data['contour'])
     
