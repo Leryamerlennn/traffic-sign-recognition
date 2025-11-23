@@ -110,8 +110,8 @@ def find_contours(image):
     white_mask = detect_white_channel(image, hsv_image)
     
     contour_params = {
-        'min_area': 600,
-        'max_area': 60000,
+        'min_area': 500,
+        'max_area': 5000,
         'max_aspect_ratio': 4.0,
         'epsilon_factor': 0.02
     }

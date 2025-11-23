@@ -77,7 +77,7 @@ def analyze_contours(
             'convexity': cv2.isContourConvex(contour),
             'solidity': solidity,
             'approx_contour': approx,
-            #'type_of_shape': type_of_shape
+            'type_of_shape': type_of_shape
         }
     
     def calculate_overlap(rect1, rect2):
@@ -185,15 +185,14 @@ def analyze_contours(
         geometry = contour_data['geometry']
         context = contour_data['context']
         
-        if (shape['area'] > 0 and
-            shape['roundness'] >= roundness_threshold and
+        if (shape['convexity'] and 
+            shape['roundness'] >= roundness_threshold or
             shape['solidity'] >= solidity_threshold and
             geometry['meets_size_requirements'] and
-            not context['in_corner'] and
+            # not context['in_corner'] and
             not context['has_significant_overlap'] and
-            min_ar <= geometry['aspect_ratio'] <= max_ar):
-            #shape['type_of_shape']):
-            
+            min_ar <= geometry['aspect_ratio'] <= max_ar and
+            shape['type_of_shape']):
             valid_contours.append(contour_data['contour'])
     
     
