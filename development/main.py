@@ -81,7 +81,7 @@ def classify_sign(bgr_crop: np.ndarray):
 
 
 def camera_work():
-    video = cv2.VideoCapture('main4.mp4') # You may choose camera source instead of video file
+    video = cv2.VideoCapture('main.mp4') # You may choose camera source instead of video file
 
     fps = video.get(cv2.CAP_PROP_FPS)
     if fps is None or fps == 0:
