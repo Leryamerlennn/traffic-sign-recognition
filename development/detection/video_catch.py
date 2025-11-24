@@ -30,8 +30,6 @@ def camera_work():
         if not ret: 
             print("Error: The frame was not read.")
             break 
-
-        #call functions 
         
         preproc = preprocessing(frame)
         result1 = find_contours(preproc)
@@ -47,29 +45,15 @@ def camera_work():
         )
         cv2.imshow("contours", copy_preproc)
 
-
         # Exit
         if cv2.waitKey(1) & 0xFF == 27:
             break
 
         count += 1
-
-        # if count % 50 == 0:
-        #     tm.stop()
-        #     fps = 50 / tm.getTimeSec()  
-        #     tm.reset()
-        #     tm.start()
-
-        # # FPS 
-        # print( f"FPS: {fps:.2f}")
     
     # DELETE 
     video.release()
     cv2.destroyAllWindows()
-
-
-
-
 
 if __name__ == "__main__":
     camera_work()

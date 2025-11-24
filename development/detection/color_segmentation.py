@@ -38,23 +38,18 @@ def detect_blue_channel(hsv_image):
     return blue_mask
 
 def detect_white_channel(bgr_image, hsv_image):
-    # Разделяем каналы BGR для проверки яркости
     b, g, r = cv2.split(bgr_image)
     
-    # Проверка яркости (Value > 200) в HSV
     v_channel = hsv_image[:, :, 2]
     brightness_mask = (v_channel > 200).astype(np.uint8) * 255
     
-    # Проверка насыщенности (Saturation < 50) в HSV
     s_channel = hsv_image[:, :, 1]
     saturation_mask = (s_channel < 50).astype(np.uint8) * 255
     
-    # Объединяем условия: высокая яркость И низкая насыщенность
     white_mask = cv2.bitwise_and(brightness_mask, saturation_mask)
     
     return white_mask
 
-# список всех подходящих контуров 
 def process_all_contours(masks_dict, contour_params, min_area=600, max_area=6000):
     
     max_aspect_ratio = contour_params.get('max_aspect_ratio', 4.0)
@@ -66,7 +61,6 @@ def process_all_contours(masks_dict, contour_params, min_area=600, max_area=6000
         if mask is None:
             continue
             
-        # Поиск всех контуров на маске
         contours, hierarchy = cv2.findContours(
             mask, 
             cv2.RETR_EXTERNAL, 
@@ -74,45 +68,38 @@ def process_all_contours(masks_dict, contour_params, min_area=600, max_area=6000
         )
         
         for contour in contours:
-            # Calculate area
             area = cv2.contourArea(contour)
             
-            # ignore 0 area
             if area == 0:
                 continue
                 
             x, y, w, h = cv2.boundingRect(contour)
             aspect_ratio = max(w, h) / min(w, h) if min(w, h) > 0 else float('inf')
-            
-            # filtration too small or too big 
+             
             if (area < min_area or 
                 area > max_area or 
                 aspect_ratio > max_aspect_ratio):
                 continue
             
-            # Аппроксимация контура
             epsilon = epsilon_factor * cv2.arcLength(contour, True)
             approx_contour = cv2.approxPolyDP(contour, epsilon, True)
             
-            # Просто добавляем контур в список
             all_contours.append(approx_contour)
     
     return all_contours
 
 # =========== MAIN process function ============
 def find_contours(image):
-    # BGR -> HSV
     hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    
-    # Detection of the colors 
+     
     red_mask = detect_red_channel(hsv_image)
     blue_mask = detect_blue_channel(hsv_image)
     white_mask = detect_white_channel(image, hsv_image)
     
     contour_params = {
-        'min_area': 500,
-        'max_area': 5000,
-        'max_aspect_ratio': 4.0,
+        'min_area': 400,
+        'max_area': 20000,
+        'max_aspect_ratio': 3.5,
         'epsilon_factor': 0.02
     }
     
@@ -122,7 +109,7 @@ def find_contours(image):
         'white': white_mask
     }
 
-    contours_result = process_all_contours(masks_dict, contour_params, 600, 60000)
+    contours_result = process_all_contours(masks_dict, contour_params, 400, 10000)
     
     result = {
         'original': image,
@@ -134,7 +121,3 @@ def find_contours(image):
     }
     
     return result
-
-
-
-

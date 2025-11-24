@@ -9,7 +9,7 @@ def analyze_contours(
     roundness_threshold=0.3,
     solidity_threshold=0.8,
     corner_margin=10,
-    overlap_threshold=0.3
+    overlap_threshold=0.5
 ):
 
     def ensure_contour_format(contour):
@@ -17,16 +17,12 @@ def analyze_contours(
         if contour is None:
             return None
             
-        # Преобразуем в numpy array если это не так
         if not isinstance(contour, np.ndarray):
             contour = np.array(contour, dtype=np.int32)
-        
-        # Проверяем и исправляем форму контура
+
         if len(contour.shape) == 2 and contour.shape[1] == 2:
-            # Формат: (N, 2) -> преобразуем в (N, 1, 2)
             contour = contour.reshape(-1, 1, 2)
         elif len(contour.shape) == 1:
-            # Если это плоский массив, пытаемся восстановить структуру
             if len(contour) % 2 == 0:
                 contour = contour.reshape(-1, 1, 2)
             else:
@@ -38,7 +34,6 @@ def analyze_contours(
         if contour is None or len(contour) < 3:
             return False
         
-        # Аппроксимация Дугласа-Пекера
         perimeter = cv2.arcLength(contour, True)
         approx = cv2.approxPolyDP(contour, 0.02 * perimeter, True)
         n = len(approx)
@@ -47,15 +42,14 @@ def analyze_contours(
         if n in [3, 4]:
             return True
         
-        if n > 8 and cv2.isContourConvex(approx):
+        if n >= 6 and cv2.isContourConvex(approx):
             sides = [np.linalg.norm(approx[(i+1)%n][0] - approx[i][0]) for i in range(n)]
             avg_side = np.mean(sides)
             return all(abs(side - avg_side) < 0.3 * avg_side for side in sides)
         
         return False
 
-    def calculate_shape_features(contour):
-        # Calculate parameters 
+    def calculate_shape_features(contour): 
         area = cv2.contourArea(contour)
         perimeter = cv2.arcLength(contour, True)
         
@@ -101,14 +95,12 @@ def analyze_contours(
     if contours is None or len(contours) == 0:
         return []
     
-    # main logic    
     valid_contours = []  #
     contours_data = []
     img_height, img_width = image_shape
     min_width, min_height = min_size
     min_ar, max_ar = aspect_ratio_range
     
-    # calculate params for every contour 
     for i, contour in enumerate(contours):
 
         formatted_contour = ensure_contour_format(contour)
@@ -120,7 +112,6 @@ def analyze_contours(
         if shape_features is None:
             continue
             
-        # bounding box
         try:
             x, y, w, h = cv2.boundingRect(formatted_contour)
             aspect_ratio = w / h if h > 0 else 0
@@ -147,7 +138,7 @@ def analyze_contours(
     if not contours_data:
         return []
     
-    # Второй проход: анализ контекста
+    contours_data.sort(key=lambda c: cv2.contourArea(c['contour']))
     for i, contour_data in enumerate(contours_data):
         rect = contour_data['geometry']['bounding_rect']
         x, y, w, h = rect
@@ -162,10 +153,14 @@ def analyze_contours(
         max_overlap = 0.0
         has_significant_overlap = False
         
-        for j, other_data in enumerate(contours_data):
-            if i == j:
-                continue
+        for j, other_data in enumerate(contours_data[i+1:]):
                 
+            X, Y, W, H = other_data['geometry']['bounding_rect']
+            if (x >= X and y >= Y and x + w <= X + W and y + h <= Y + H):
+                has_significant_overlap = True
+                max_overlap = 1.0
+                break
+
             overlap = calculate_overlap(rect, other_data['geometry']['bounding_rect'])
             max_overlap = max(max_overlap, overlap)
             
@@ -179,20 +174,19 @@ def analyze_contours(
             'overlap_score': max_overlap
         }
     
-    # Фильтрация и сбор валидных контуров
     for contour_data in contours_data:
         shape = contour_data['shape']
         geometry = contour_data['geometry']
         context = contour_data['context']
         
         if (shape['convexity'] and 
-            shape['roundness'] >= roundness_threshold or
-            shape['solidity'] >= solidity_threshold and
+            shape['roundness'] >= roundness_threshold and
+            # shape['solidity'] >= solidity_threshold and
             geometry['meets_size_requirements'] and
             # not context['in_corner'] and
             not context['has_significant_overlap'] and
-            min_ar <= geometry['aspect_ratio'] <= max_ar and
-            shape['type_of_shape']):
+            min_ar <= geometry['aspect_ratio'] <= max_ar and 1):
+            # shape['type_of_shape']):
             valid_contours.append(contour_data['contour'])
     
     
