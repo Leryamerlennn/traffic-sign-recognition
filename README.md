@@ -1,60 +1,87 @@
-# Traffic Sign Detection and Recognition
+# TrafficSignsAI — Traffic Sign Detection & Recognition Pipeline
 
-This project develops a complete pipeline for detecting and recognizing traffic signs in images using deep learning and computer vision techniques.
+This project implements a complete end-to-end pipeline for detecting and recognizing traffic signs using a hybrid approach: classical computer vision for fast sign localization and a lightweight CNN classifier for identifying 43 traffic sign categories. The system is optimized to run efficiently on a standard CPU while remaining robust to real-world conditions such as night scenes, glare, rain, and noise.
 
-
+---
 
 ## 🧠 Project Goal
 
-To build a system that can:
-1. **Detect traffic signs** in road images using object detection models.
-2. **Classify** each detected sign into its correct category (e.g., speed limit, stop sign, pedestrian crossing).
-3. Work reliably under **various conditions** (lighting, occlusion, rotation).
+To develop a full pipeline that:
+1. **Locates traffic signs** using contour-based classical CV.
+2. **Crops, resizes, and normalizes ROIs** to a consistent 32×32 tensor format.
+3. **Classifies** each sign into one of **43 categories** using a compact CNN.
+4. Ensures **real-time performance** and **high robustness** on everyday road images.
 
+---
 
+## 🔎 Pipeline Overview
 
-## 🎯 Why It Matters
+### **1. Input**
+- Real-life frame from a webcam or video stream.
 
-Traffic sign recognition is crucial for:
-- **Autonomous vehicles** and driver-assistance systems (ADAS)
-- **Road safety** applications
-- **Navigation** and smart infrastructure
-- **Mobile apps** (e.g., for driving learners or assistance for visually impaired users)
+### **2. CV Detector**
+- Extract contours from the input frame.  
+- Compute bounding boxes + expand edges slightly.  
+- Crop ROIs from the original image.  
+- Resize each ROI to **32×32**.  
+- Normalize and convert to tensor input.
 
+### **3. CNN Classifier**
+- Lightweight VGG-style CNN with SE-block attention.  
+- Two Conv–Conv–Pool feature extractor blocks.  
+- Dense layer + Dropout for regularization.  
+- Softmax output over **44 traffic sign classes**.
 
+### **4. Output**
+- Classification accuracy: **97–98%**  
+- Detection quality (classical CV): **mAP@0.5 ≈ 0.82**  
+- End-to-end pipeline accuracy: **≈ 90%**  
+- Robustness to real-world conditions: **80–85%**
+
+---
+
+## 📚 Dataset Engineering
+
+We created a unified dataset by merging **three independent sources** into a single 160k+ image dataset with consistent labels across 43 classes.
+
+Processing steps included:
+- Noise cleaning & duplicate removal  
+- Resize normalization (32×32 and 96×96)  
+- Strong augmentations: rotations, blur, brightness/contrast shifts, hue changes, color jitter  
+- Label unification and balanced splitting
+
+This significantly improved robustness to difficult scenes.
+
+---
+
+## 🎯 Key Insights
+
+- Detection is the main bottleneck: inaccurate ROI → unavoidable CNN errors.  
+- SE-blocks improved accuracy without increasing model complexity.  
+- Augmentations were essential for robustness to night, glare, rain, and noise.  
+- The full pipeline performs reliably on real road images.
+
+---
 
 ## 👥 Team
 
-- **Neganova Valeria** – [v.neganova@innopolis.university](mailto:v.neganova@innopolis.university)
-- **Malakhova Anastasia** – [a.malakhova@innopolis.university](mailto:a.malakhova@innopolis.university)
-- **Nikolay Rostov** – [n.rostov@innopolis.university](mailto:n.rostov@innopolis.university)
+- **Valeria Neganova** — CNN classifier development  [v.neganova@innopolis.university](mailto:v.neganova@innopolis.university)
+- **Anastasia Malakhova** — CV detector development  [a.malakhova@innopolis.university](mailto:a.malakhova@innopolis.university)
+- **Nikolay Rostov** — Dataset engineering, integration, testing  [n.rostov@innopolis.university](mailto:n.rostov@innopolis.university)
+
+---
+
+## 🛠️ Installation
+
+```bash
+pip install -r requirements.txt
+```
+
+## ▶️ Usage
+
+```bash
+python run_pipeline.py
+```
 
 
-
-## 🔗 Datasets
-
-We are working with:
-- **GTSDB** (German Traffic Sign Detection Benchmark) for object detection tasks.
-- **GTSRB** (German Traffic Sign Recognition Benchmark) for classification.
-
-
-
-
-## 🔍 Tasks & Methods
-
-| Task | Approach |
-|------|----------|
-| **Detection** | YOLOv5 / YOLOv8 / Faster R-CNN for locating signs in images |
-| **Classification** | CNN / Transfer Learning (e.g. ResNet, MobileNet) |
-| **Preprocessing** | OpenCV for image manipulation and mask creation |
-| **Augmentation** | Rotation, noise, brightness changes, partial occlusion |
-
-
-
-## 🧪 Metrics
-
-- **mAP** (mean Average Precision) for detection performance
-- **Accuracy**, **Precision**, **Recall**, **F1-score** for classification
-- **Inference time** per image (<100 ms)
-- **Robustness** to real-world challenges (blur, occlusion, lighting)
 
