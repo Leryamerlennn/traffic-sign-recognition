@@ -83,5 +83,6 @@ pip install -r requirements.txt
 python run_pipeline.py
 ```
 
-
+## 📊 Results
+You can check folder `main/video` with our results ;)
 
