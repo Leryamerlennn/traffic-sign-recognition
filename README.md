@@ -27,7 +27,6 @@ To develop a full pipeline that:
 - Normalize and convert to tensor input.
 
 ### **3. CNN Classifier**
-- Lightweight VGG-style CNN with SE-block attention.  
 - Two Conv–Conv–Pool feature extractor blocks.  
 - Dense layer + Dropout for regularization.  
 - Softmax output over **44 traffic sign classes**.
@@ -56,8 +55,7 @@ This significantly improved robustness to difficult scenes.
 
 ## 🎯 Key Insights
 
-- Detection is the main bottleneck: inaccurate ROI → unavoidable CNN errors.  
-- SE-blocks improved accuracy without increasing model complexity.  
+- Detection is the main bottleneck: inaccurate ROI → unavoidable CNN errors.   
 - Augmentations were essential for robustness to night, glare, rain, and noise.  
 - The full pipeline performs reliably on real road images.
 
